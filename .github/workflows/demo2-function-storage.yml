@@ -1,12 +1,6 @@
 name: Demo 2 - Deploy Function App with Storage
 
 on:
-  push:
-    branches: [ main ]
-    paths:
-      - 'functions/demo2-storage/**'
-      - 'terraform/demo2/**'
-      - '.github/workflows/demo2-function-storage.yml'
   pull_request:
     branches: [ main ]
     paths:

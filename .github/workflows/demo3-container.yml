@@ -1,12 +1,6 @@
 name: Demo 3 - Deploy Container App
 
 on:
-  push:
-    branches: [ main ]
-    paths:
-      - 'containers/demo3-simple/**'
-      - 'terraform/demo3/**'
-      - '.github/workflows/demo3-container.yml'
   pull_request:
     branches: [ main ]
     paths:
