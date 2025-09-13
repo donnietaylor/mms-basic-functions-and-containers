@@ -1,13 +1,6 @@
 name: Demo 4 - Deploy Integrated Solution
 
 on:
-  pull_request:
-    branches: [ main ]
-    paths:
-      - 'functions/demo4-integrated/**'
-      - 'containers/demo4-api/**'
-      - 'terraform/demo4/**'
-      - '.github/workflows/demo4-integrated.yml'
   workflow_dispatch:
 
 env:
