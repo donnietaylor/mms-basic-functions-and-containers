@@ -88,6 +88,13 @@ jobs:
 
     - name: 'Deploy to Container App'
       run: |
+        # Configure container app to use managed identity for ACR authentication
+        az containerapp registry set \
+          --name ${{ env.CONTAINER_APP_NAME }} \
+          --resource-group rg-mms-demo3 \
+          --server ${{ env.CONTAINER_REGISTRY_NAME }}.azurecr.io \
+          --identity system
+        
         # Update the container app with the new image
         az containerapp update \
           --name ${{ env.CONTAINER_APP_NAME }} \
