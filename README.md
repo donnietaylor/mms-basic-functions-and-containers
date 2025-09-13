@@ -40,6 +40,11 @@ The demos progress from simple to complex, building understanding step-by-step:
 - Resource Group access or ability to create resource groups
 - Contributor role in the subscription
 
+### Create Service Principal
+```bash
+az ad sp create-for-rbac --name "mms-demo-sp" --role contributor --scopes /subscriptions/{subscription-id} --sdk-auth
+```
+
 ### Required Secrets (GitHub Repository)
 Set up the following secret in your GitHub repository:
 
@@ -52,11 +57,6 @@ Set up the following secret in your GitHub repository:
      "tenantId": "your-tenant-id"
    }
    ```
-
-### Create Service Principal
-```bash
-az ad sp create-for-rbac --name "mms-demo-sp" --role contributor --scopes /subscriptions/{subscription-id} --sdk-auth
-```
 
 ## 🚀 Demo Details
 
