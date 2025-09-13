@@ -1,12 +1,6 @@
 name: Demo 1 - Deploy Simple Function App
 
 on:
-  pull_request:
-    branches: [ main ]
-    paths:
-      - 'functions/demo1-simple/**'
-      - 'terraform/demo1/**'
-      - '.github/workflows/demo1-function.yml'
   workflow_dispatch:
 
 env:
