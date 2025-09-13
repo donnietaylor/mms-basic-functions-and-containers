@@ -177,3 +177,10 @@ resource "azurerm_container_app" "demo4" {
     type = "SystemAssigned"
   }
 }
+
+# Grant Container App managed identity permission to pull from ACR
+resource "azurerm_role_assignment" "container_app_acr_pull" {
+  scope                = azurerm_container_registry.demo4.id
+  role_definition_name = "AcrPull"
+  principal_id         = azurerm_container_app.demo4.identity[0].principal_id
+}
