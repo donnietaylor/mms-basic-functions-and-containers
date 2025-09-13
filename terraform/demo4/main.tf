@@ -29,11 +29,11 @@ resource "azurerm_storage_account" "demo4_shared" {
   location                 = azurerm_resource_group.demo4.location
   account_tier             = "Standard"
   account_replication_type = "LRS"
-  
+
   # Enable public access for demo purposes
-  public_network_access_enabled = true
+  public_network_access_enabled   = true
   allow_nested_items_to_be_public = true
-  
+
   tags = var.tags
 }
 
@@ -72,7 +72,7 @@ resource "azurerm_service_plan" "demo4_function" {
   resource_group_name = azurerm_resource_group.demo4.name
   location            = azurerm_resource_group.demo4.location
   os_type             = "Linux"
-  sku_name            = "Y1"  # Consumption plan
+  sku_name            = "Y1" # Consumption plan
   tags                = var.tags
 }
 
@@ -93,7 +93,7 @@ resource "azurerm_linux_function_app" "demo4" {
   }
 
   app_settings = {
-    "FUNCTIONS_WORKER_RUNTIME" = "powershell"
+    "FUNCTIONS_WORKER_RUNTIME"       = "powershell"
     "SCM_DO_BUILD_DURING_DEPLOYMENT" = "true"
     # Shared storage for integration
     "SharedStorageConnection" = azurerm_storage_account.demo4_shared.primary_connection_string
@@ -130,13 +130,13 @@ resource "azurerm_container_app" "demo4" {
   name                         = var.container_app_name
   container_app_environment_id = azurerm_container_app_environment.demo4.id
   resource_group_name          = azurerm_resource_group.demo4.name
-  revision_mode               = "Single"
-  tags                        = var.tags
+  revision_mode                = "Single"
+  tags                         = var.tags
 
   template {
     container {
       name   = "demo4-integrated-api"
-      image  = "mcr.microsoft.com/powershell:7.2-ubuntu-20.04"  # Placeholder - will be updated in workflow
+      image  = "mcr.microsoft.com/powershell:7.2-ubuntu-20.04" # Placeholder - will be updated in workflow
       cpu    = 0.5
       memory = "1Gi"
 
@@ -144,12 +144,12 @@ resource "azurerm_container_app" "demo4" {
         name  = "PORT"
         value = "8080"
       }
-      
+
       env {
         name  = "FUNCTION_APP_URL"
         value = "https://${azurerm_linux_function_app.demo4.default_hostname}"
       }
-      
+
       env {
         name  = "SHARED_STORAGE_CONNECTION"
         value = azurerm_storage_account.demo4_shared.primary_connection_string
@@ -162,9 +162,9 @@ resource "azurerm_container_app" "demo4" {
 
   ingress {
     allow_insecure_connections = false
-    external_enabled          = true
-    target_port              = 8080
-    transport                = "http"
+    external_enabled           = true
+    target_port                = 8080
+    transport                  = "http"
 
     traffic_weight {
       percentage      = 100

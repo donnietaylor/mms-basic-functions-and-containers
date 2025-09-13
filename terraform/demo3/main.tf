@@ -54,13 +54,13 @@ resource "azurerm_container_app" "demo3" {
   name                         = var.container_app_name
   container_app_environment_id = azurerm_container_app_environment.demo3.id
   resource_group_name          = azurerm_resource_group.demo3.name
-  revision_mode               = "Single"
-  tags                        = var.tags
+  revision_mode                = "Single"
+  tags                         = var.tags
 
   template {
     container {
       name   = "demo3-api"
-      image  = "mcr.microsoft.com/powershell:7.2-ubuntu-20.04"  # Placeholder - will be updated in workflow
+      image  = "mcr.microsoft.com/powershell:7.2-ubuntu-20.04" # Placeholder - will be updated in workflow
       cpu    = 0.25
       memory = "0.5Gi"
 
@@ -76,9 +76,9 @@ resource "azurerm_container_app" "demo3" {
 
   ingress {
     allow_insecure_connections = false
-    external_enabled          = true
-    target_port              = 8080
-    transport                = "http"
+    external_enabled           = true
+    target_port                = 8080
+    transport                  = "http"
 
     traffic_weight {
       percentage      = 100

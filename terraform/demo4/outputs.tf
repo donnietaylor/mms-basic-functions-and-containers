@@ -78,8 +78,8 @@ output "log_analytics_workspace_name" {
 output "integration_test_urls" {
   description = "URLs for testing the integration between services"
   value = {
-    function_app = "https://${azurerm_linux_function_app.demo4.default_hostname}/api/HttpTrigger?name=IntegrationTest"
-    container_app = "https://${azurerm_container_app.demo4.ingress[0].fqdn}/"
+    function_app          = "https://${azurerm_linux_function_app.demo4.default_hostname}/api/HttpTrigger?name=IntegrationTest"
+    container_app         = "https://${azurerm_container_app.demo4.ingress[0].fqdn}/"
     container_integration = "https://${azurerm_container_app.demo4.ingress[0].fqdn}/integration"
   }
 }
