@@ -1,0 +1,105 @@
+name: Demo 2 - Deploy Function App with Storage
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'functions/demo2-storage/**'
+      - 'terraform/demo2/**'
+      - '.github/workflows/demo2-function-storage.yml'
+  pull_request:
+    branches: [ main ]
+    paths:
+      - 'functions/demo2-storage/**'
+      - 'terraform/demo2/**'
+      - '.github/workflows/demo2-function-storage.yml'
+  workflow_dispatch:
+
+env:
+  AZURE_FUNCTIONAPP_NAME: 'func-mms-demo2'
+  AZURE_FUNCTIONAPP_PACKAGE_PATH: './functions/demo2-storage'
+  TERRAFORM_VERSION: '1.5.0'
+
+jobs:
+  terraform:
+    name: 'Deploy Infrastructure with Terraform'
+    runs-on: ubuntu-latest
+    environment: development
+    
+    defaults:
+      run:
+        shell: bash
+        working-directory: ./terraform/demo2
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+
+    - name: Setup Terraform
+      uses: hashicorp/setup-terraform@v2
+      with:
+        terraform_version: ${{ env.TERRAFORM_VERSION }}
+
+    - name: Azure Login
+      uses: azure/login@v1
+      with:
+        creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+    - name: Terraform Init
+      run: terraform init
+
+    - name: Terraform Plan
+      run: terraform plan -no-color -input=false
+      continue-on-error: true
+
+    - name: Terraform Apply
+      if: github.ref == 'refs/heads/main'
+      run: terraform apply -auto-approve -input=false
+
+  deploy:
+    name: 'Deploy Function App'
+    runs-on: ubuntu-latest
+    needs: terraform
+    if: github.ref == 'refs/heads/main'
+    environment: development
+
+    steps:
+    - name: 'Checkout GitHub Action'
+      uses: actions/checkout@v4
+
+    - name: 'Login via Azure CLI'
+      uses: azure/login@v1
+      with:
+        creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+    - name: 'Run Azure Functions Action'
+      uses: Azure/functions-action@v1
+      with:
+        app-name: ${{ env.AZURE_FUNCTIONAPP_NAME }}
+        package: ${{ env.AZURE_FUNCTIONAPP_PACKAGE_PATH }}
+
+    - name: 'Test Function Endpoint'
+      run: |
+        echo "Waiting for function to be ready..."
+        sleep 45
+        
+        FUNCTION_URL="https://${{ env.AZURE_FUNCTIONAPP_NAME }}.azurewebsites.net/api/HttpTrigger"
+        
+        echo "Testing function at: $FUNCTION_URL"
+        
+        # Test default response
+        echo "Test 1: Default response"
+        curl -f "$FUNCTION_URL" || echo "Test 1 failed"
+        
+        # Test storing a message
+        echo "Test 2: Store a message"
+        curl -f -X POST "$FUNCTION_URL?action=store&message=Hello%20from%20MMS%20Demo%202!" || echo "Test 2 failed"
+        
+        # Wait a bit for storage operation to complete
+        sleep 10
+        
+        # Test listing messages
+        echo "Test 3: List stored messages"
+        curl -f "$FUNCTION_URL?action=list" || echo "Test 3 failed"
+        
+        echo "Demo 2 function deployment and testing completed!"

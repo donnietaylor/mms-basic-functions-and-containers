@@ -1,0 +1,211 @@
+name: Demo 4 - Deploy Integrated Solution
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'functions/demo4-integrated/**'
+      - 'containers/demo4-api/**'
+      - 'terraform/demo4/**'
+      - '.github/workflows/demo4-integrated.yml'
+  pull_request:
+    branches: [ main ]
+    paths:
+      - 'functions/demo4-integrated/**'
+      - 'containers/demo4-api/**'
+      - 'terraform/demo4/**'
+      - '.github/workflows/demo4-integrated.yml'
+  workflow_dispatch:
+
+env:
+  AZURE_FUNCTIONAPP_NAME: 'func-mms-demo4'
+  AZURE_FUNCTIONAPP_PACKAGE_PATH: './functions/demo4-integrated'
+  CONTAINER_APP_NAME: 'ca-mms-demo4'
+  CONTAINER_REGISTRY_NAME: 'acrmmsdemo4'
+  IMAGE_NAME: 'demo4-integrated-api'
+  TERRAFORM_VERSION: '1.5.0'
+
+jobs:
+  terraform:
+    name: 'Deploy Infrastructure with Terraform'
+    runs-on: ubuntu-latest
+    environment: development
+    outputs:
+      function_app_url: ${{ steps.terraform_output.outputs.function_app_url }}
+      container_app_url: ${{ steps.terraform_output.outputs.container_app_url }}
+      
+    defaults:
+      run:
+        shell: bash
+        working-directory: ./terraform/demo4
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+
+    - name: Setup Terraform
+      uses: hashicorp/setup-terraform@v2
+      with:
+        terraform_version: ${{ env.TERRAFORM_VERSION }}
+        terraform_wrapper: false
+
+    - name: Azure Login
+      uses: azure/login@v1
+      with:
+        creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+    - name: Terraform Init
+      run: terraform init
+
+    - name: Terraform Plan
+      run: terraform plan -no-color -input=false
+      continue-on-error: true
+
+    - name: Terraform Apply
+      if: github.ref == 'refs/heads/main'
+      run: terraform apply -auto-approve -input=false
+
+    - name: Get Terraform Outputs
+      if: github.ref == 'refs/heads/main'
+      id: terraform_output
+      run: |
+        echo "function_app_url=$(terraform output -raw function_app_url)" >> $GITHUB_OUTPUT
+        echo "container_app_url=$(terraform output -raw container_app_url)" >> $GITHUB_OUTPUT
+
+  deploy-function:
+    name: 'Deploy Function App'
+    runs-on: ubuntu-latest
+    needs: terraform
+    if: github.ref == 'refs/heads/main'
+    environment: development
+
+    steps:
+    - name: 'Checkout GitHub Action'
+      uses: actions/checkout@v4
+
+    - name: 'Login via Azure CLI'
+      uses: azure/login@v1
+      with:
+        creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+    - name: 'Deploy Azure Function App'
+      uses: Azure/functions-action@v1
+      with:
+        app-name: ${{ env.AZURE_FUNCTIONAPP_NAME }}
+        package: ${{ env.AZURE_FUNCTIONAPP_PACKAGE_PATH }}
+
+  deploy-container:
+    name: 'Build and Deploy Container'
+    runs-on: ubuntu-latest
+    needs: [terraform, deploy-function]
+    if: github.ref == 'refs/heads/main'
+    environment: development
+
+    steps:
+    - name: 'Checkout GitHub Action'
+      uses: actions/checkout@v4
+
+    - name: 'Login via Azure CLI'
+      uses: azure/login@v1
+      with:
+        creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+    - name: 'Build and Push Container Image'
+      run: |
+        # Login to ACR
+        az acr login --name ${{ env.CONTAINER_REGISTRY_NAME }}
+        
+        # Build and push the image
+        cd containers/demo4-api
+        
+        # Build the image
+        docker build -t ${{ env.CONTAINER_REGISTRY_NAME }}.azurecr.io/${{ env.IMAGE_NAME }}:latest .
+        
+        # Push the image
+        docker push ${{ env.CONTAINER_REGISTRY_NAME }}.azurecr.io/${{ env.IMAGE_NAME }}:latest
+        
+        echo "Container image built and pushed successfully!"
+
+    - name: 'Update Container App'
+      run: |
+        # Update the container app with the new image
+        az containerapp update \
+          --name ${{ env.CONTAINER_APP_NAME }} \
+          --resource-group rg-mms-demo4 \
+          --image ${{ env.CONTAINER_REGISTRY_NAME }}.azurecr.io/${{ env.IMAGE_NAME }}:latest
+        
+        echo "Container App updated successfully!"
+
+  test-integration:
+    name: 'Test Integrated Solution'
+    runs-on: ubuntu-latest
+    needs: [terraform, deploy-function, deploy-container]
+    if: github.ref == 'refs/heads/main'
+    environment: development
+
+    steps:
+    - name: 'Login via Azure CLI'
+      uses: azure/login@v1
+      with:
+        creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+    - name: 'Test Integration'
+      run: |
+        # Get service URLs
+        FUNCTION_URL=$(az functionapp show \
+          --name ${{ env.AZURE_FUNCTIONAPP_NAME }} \
+          --resource-group rg-mms-demo4 \
+          --query defaultHostName \
+          --output tsv)
+        
+        CONTAINER_URL=$(az containerapp show \
+          --name ${{ env.CONTAINER_APP_NAME }} \
+          --resource-group rg-mms-demo4 \
+          --query properties.configuration.ingress.fqdn \
+          --output tsv)
+        
+        echo "Function App URL: https://$FUNCTION_URL"
+        echo "Container App URL: https://$CONTAINER_URL"
+        
+        # Wait for services to be ready
+        echo "Waiting for services to be ready..."
+        sleep 90
+        
+        echo "=== Testing Individual Services ==="
+        
+        # Test Function App
+        echo "Test 1: Function App basic endpoint"
+        curl -f "https://$FUNCTION_URL/api/HttpTrigger?name=Demo4-Test" || echo "Function App test failed"
+        
+        # Test Container App
+        echo "Test 2: Container App basic endpoint"
+        curl -f "https://$CONTAINER_URL/" || echo "Container App test failed"
+        
+        echo "=== Testing Integration ==="
+        
+        # Test Function App → Container App integration
+        echo "Test 3: Function App pinging Container App"
+        curl -f "https://$FUNCTION_URL/api/HttpTrigger?action=container-ping" || echo "Function→Container ping failed"
+        
+        # Test Function App → Container App messaging
+        echo "Test 4: Function App sending message to Container App"
+        curl -f "https://$FUNCTION_URL/api/HttpTrigger?action=notify-container&data=Integration%20Test%20Message" || echo "Function→Container messaging failed"
+        
+        # Test Container App → Function App integration
+        echo "Test 5: Container App integration endpoint"
+        curl -f "https://$CONTAINER_URL/integration" || echo "Container→Function integration failed"
+        
+        # Test shared storage
+        echo "Test 6: Function App storing data in shared storage"
+        curl -f "https://$FUNCTION_URL/api/HttpTrigger?action=store-shared&data=SharedTestData&name=IntegrationTest" || echo "Shared storage test failed"
+        
+        # Test Container App analytics
+        echo "Test 7: Container App analytics"
+        curl -f "https://$CONTAINER_URL/analytics" || echo "Analytics test failed"
+        
+        echo "=== Integration Testing Complete ==="
+        echo "Function App: https://$FUNCTION_URL/api/HttpTrigger"
+        echo "Container App: https://$CONTAINER_URL"
+        echo "Integration Test: https://$CONTAINER_URL/integration"
+        
+        echo "Demo 4 integrated solution deployment and testing completed!"
