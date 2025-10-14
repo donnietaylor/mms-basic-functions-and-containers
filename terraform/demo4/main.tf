@@ -97,8 +97,8 @@ resource "azurerm_linux_function_app" "demo4" {
     "SCM_DO_BUILD_DURING_DEPLOYMENT" = "true"
     # Shared storage for integration
     "SharedStorageConnection" = azurerm_storage_account.demo4_shared.primary_connection_string
-    # Container App URL (will be updated after container deployment)
-    "CONTAINER_APP_URL" = "https://${var.container_app_name}.${var.location}.azurecontainerapps.io"
+    # Container App URL (placeholder - will be updated by workflow after container deployment)
+    "CONTAINER_APP_URL" = "https://placeholder.azurecontainerapps.io"
   }
 
   tags = var.tags
