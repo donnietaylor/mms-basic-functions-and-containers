@@ -128,6 +128,25 @@ jobs:
           --image ${{ env.CONTAINER_REGISTRY_NAME }}.azurecr.io/${{ env.IMAGE_NAME }}:latest
         
         echo "Container App updated successfully!"
+    
+    - name: 'Update Function App with Container URL'
+      run: |
+        # Get the actual Container App URL
+        CONTAINER_URL=$(az containerapp show \
+          --name ${{ env.CONTAINER_APP_NAME }} \
+          --resource-group rg-mms-demo4 \
+          --query properties.configuration.ingress.fqdn \
+          --output tsv)
+        
+        echo "Container App FQDN: $CONTAINER_URL"
+        
+        # Update Function App setting with correct Container App URL
+        az functionapp config appsettings set \
+          --name ${{ env.AZURE_FUNCTIONAPP_NAME }} \
+          --resource-group rg-mms-demo4 \
+          --settings CONTAINER_APP_URL="https://$CONTAINER_URL"
+        
+        echo "Function App CONTAINER_APP_URL updated to: https://$CONTAINER_URL"
 
   test-integration:
     name: 'Test Integrated Solution'
