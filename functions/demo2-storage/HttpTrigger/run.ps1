@@ -8,7 +8,7 @@ Write-Host "PowerShell HTTP trigger function with storage integration processed 
 
 try {
     # Get storage account connection string from environment variables
-    $storageConnectionString = $env:AzureWebJobsStorage
+    $storageConnectionString = $env:DataStorageConnection
     
     if (-not $storageConnectionString) {
         throw "Storage connection string not found"
