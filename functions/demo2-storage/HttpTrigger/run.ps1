@@ -29,19 +29,6 @@ try {
     # Container name for storing messages
     $containerName = "demo-messages"
     
-    # Import Azure modules
-    Import-Module Az.Storage
-    
-    # Create storage context
-    $storageContext = New-AzStorageContext -ConnectionString $storageConnectionString
-    
-    # Ensure container exists
-    $container = Get-AzStorageContainer -Name $containerName -Context $storageContext -ErrorAction SilentlyContinue
-    if (-not $container) {
-        New-AzStorageContainer -Name $containerName -Context $storageContext -Permission Blob | Out-Null
-        Write-Host "Created storage container: $containerName"
-    }
-    
     switch ($action) {
         "store" {
             if (-not $message) {
@@ -51,6 +38,19 @@ try {
                 } | ConvertTo-Json
                 $statusCode = [HttpStatusCode]::BadRequest
             } else {
+                # Import Azure modules
+                Import-Module Az.Storage
+                
+                # Create storage context
+                $storageContext = New-AzStorageContext -ConnectionString $storageConnectionString
+                
+                # Ensure container exists
+                $container = Get-AzStorageContainer -Name $containerName -Context $storageContext -ErrorAction SilentlyContinue
+                if (-not $container) {
+                    New-AzStorageContainer -Name $containerName -Context $storageContext -Permission Blob | Out-Null
+                    Write-Host "Created storage container: $containerName"
+                }
+                
                 # Create a unique blob name
                 $timestamp = Get-Date -Format "yyyyMMdd-HHmmss"
                 $blobName = "message-$timestamp.txt"
@@ -74,6 +74,19 @@ try {
         }
         
         "list" {
+            # Import Azure modules
+            Import-Module Az.Storage
+            
+            # Create storage context
+            $storageContext = New-AzStorageContext -ConnectionString $storageConnectionString
+            
+            # Ensure container exists
+            $container = Get-AzStorageContainer -Name $containerName -Context $storageContext -ErrorAction SilentlyContinue
+            if (-not $container) {
+                New-AzStorageContainer -Name $containerName -Context $storageContext -Permission Blob | Out-Null
+                Write-Host "Created storage container: $containerName"
+            }
+            
             # List all stored messages
             $blobs = Get-AzStorageBlob -Container $containerName -Context $storageContext
             $messages = @()
